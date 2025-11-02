@@ -6,7 +6,11 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 
 const userSchema = z.object({
-  name: z.string().min(1, "Name is required"),
+  name: z
+    .string()
+    .min(1, "Name is required")
+    .max(100, "Name is too long")
+    .regex(/^[A-Za-z\s]+$/, "Name should not contain special characters"),
   email: z.string().email("Invalid email address"),
   address: z.string().min(1, "Address is required"),
   phone: z.string().min(10, "Phone number must be at least 10 digits"),
@@ -50,34 +54,34 @@ export async function addUser(data) {
 // fetch users action
 
 export async function fetchUsers() {
-    await connectDB();
+  await connectDB();
 
-    try{
-        const listOfUsers = await User.find({});
-        if(listOfUsers){
-            return{
-                message: "Users fetched successfully",
-                success: true,
-                status: 200,
-                users: JSON.parse(JSON.stringify(listOfUsers)),
-            };
-        }else{
-            return{
-                message: "No users found",
-                success: false,
-                status: 404,
-                users: [],
-            };
-        }
-    }catch(error){
-        console.error("Error fetching users:", error);
-        return {
-            message: "Error fetching users",
-            success: false,
-            status: 500,
-            error: error.message,
-        };
+  try {
+    const listOfUsers = await User.find({});
+    if (listOfUsers) {
+      return {
+        message: "Users fetched successfully",
+        success: true,
+        status: 200,
+        users: JSON.parse(JSON.stringify(listOfUsers)),
+      };
+    } else {
+      return {
+        message: "No users found",
+        success: false,
+        status: 404,
+        users: [],
+      };
     }
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    return {
+      message: "Error fetching users",
+      success: false,
+      status: 500,
+      error: error.message,
+    };
+  }
 }
 
 // edit user action
@@ -129,27 +133,27 @@ export async function editUser(userId, data) {
 
 // delete user action
 
-export async function deleteUser(userId){
+export async function deleteUser(userId) {
   await connectDB();
 
-  try{
+  try {
     const deletedUser = await User.findByIdAndDelete(userId);
-    if(deletedUser){
+    if (deletedUser) {
       revalidatePath("/");
-      return{
+      return {
         message: "User deleted successfully",
         success: true,
         status: 200,
         user: JSON.parse(JSON.stringify(deletedUser)),
       };
-    }else{
-      return{
+    } else {
+      return {
         message: "User not found",
         success: false,
         status: 404,
       };
     }
-  }catch(error){
+  } catch (error) {
     console.error("Error deleting user:", error);
     return {
       message: "Error deleting user",
