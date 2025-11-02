@@ -1,5 +1,8 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import CommonLayout from "@/components/common-layout";
+import { Toaster } from "sonner";
+import UserState from "@/context"; // ✅ Import your context provider
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,10 +22,22 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        {/* ✅ Wrap app with User context */}
+        <UserState>
+          <CommonLayout>{children}</CommonLayout>
+
+          {/* ✅ Global toast notifications */}
+          <Toaster
+            position="top-right"
+            richColors
+            closeButton
+            theme="light" // explicitly light theme
+            toastOptions={{
+              style: { borderRadius: "8px" },
+            }}
+          />
+        </UserState>
       </body>
     </html>
   );
