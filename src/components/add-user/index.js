@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,11 +17,10 @@ import {
   addNewUserFormControls,
   addNewUserFormInitialState,
 } from "@/utils/index.js";
-import { addUser } from "@/actions/index.js"; // ✅ directly import server action
-import { useContext } from "react";
+import { addUser, editUser } from "@/actions/index.js";
 import { UserContext } from "@/context/index.js";
-import { editUser } from "@/actions/index.js";
 import { toast } from "sonner";
+
 export default function AddUser() {
   const {
     openPop,
@@ -31,74 +30,81 @@ export default function AddUser() {
     currentEditedID,
     setCurrentEditedID,
   } = useContext(UserContext);
+
   const [loading, setLoading] = useState(false);
 
   async function handleNewUserAction(e) {
     e.preventDefault();
 
-    // frontend validation
+    // ✅ Basic empty-field validation
     const isValid = Object.keys(addNewUserFormData).every(
       (key) => addNewUserFormData[key].trim() !== ""
     );
     if (!isValid) {
-      alert("Please fill out all fields.");
+      toast.error("Please fill out all fields.");
       return;
     }
 
     try {
       setLoading(true);
 
-      // ✅ Call the server action directly
+      // ✅ Call appropriate action (Add or Edit)
       const result = currentEditedID
-      ? await editUser(currentEditedID, addNewUserFormData)
-      : await addUser(addNewUserFormData);
+        ? await editUser(currentEditedID, addNewUserFormData)
+        : await addUser(addNewUserFormData);
 
-    if (result.success) {
-      // ✅ Show success toast
-      toast.success(
-        currentEditedID
-          ? "User updated successfully!"
-          : "User added successfully!",
-        {
-          description: `Name: ${addNewUserFormData.name} | Email: ${addNewUserFormData.email}`,
-          duration: 4000, // optional: toast duration (ms)
+      if (result?.success) {
+        toast.success(
+          currentEditedID
+            ? "User updated successfully!"
+            : "User added successfully!",
+          {
+            description: `Name: ${addNewUserFormData.name} | Email: ${addNewUserFormData.email}`,
+            duration: 4000,
+          }
+        );
+
+        // ✅ Reset form and close modal
+        setAddNewUserFormData(addNewUserFormInitialState);
+        setCurrentEditedID(null);
+        setOpenPop(false);
+      } else {
+        // ❌ Handle validation errors
+        if (Array.isArray(result?.errors)) {
+          result.errors.forEach((err) => toast.error(err.message));
+        } else {
+          toast.error(result?.message || "Something went wrong.");
         }
-      );
-
-      // ✅ Reset form and close modal
-      setAddNewUserFormData(addNewUserFormInitialState);
-      setCurrentEditedID(null);
-      setOpenPop(false);
-    } else {
-      // ❌ Show error toast
-      toast.error(`Error: ${result.message}`);
+      }
+    } catch (error) {
+      console.error("Error adding/updating user:", error);
+      toast.error("An unexpected error occurred.");
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error("Error adding/updating user:", error);
-    toast.error("An unexpected error occurred.");
-  } finally {
-    setLoading(false);
   }
-}
+
+  // ✅ Reset & close dialog safely
+  const handleDialogClose = () => {
+    setOpenPop(false);
+    setAddNewUserFormData(addNewUserFormInitialState);
+    setCurrentEditedID(null);
+  };
+
   return (
     <div className="flex justify-end mb-4">
       <Button onClick={() => setOpenPop(true)}>Add User</Button>
 
-      <Dialog
-        open={openPop}
-        onOpenChange={() => {
-          setOpenPop(false);
-          setAddNewUserFormData(addNewUserFormInitialState);
-          setCurrentEditedID(null);
-        }}
-      >
+      <Dialog open={openPop} onOpenChange={handleDialogClose}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>
               {currentEditedID ? "Edit User" : "Add New User"}
             </DialogTitle>
             <DialogDescription>
-              Fill out the details below to create a new user.
+              {currentEditedID
+                ? "Update the user details below."
+                : "Fill out the details below to create a new user."}
             </DialogDescription>
           </DialogHeader>
 
@@ -128,13 +134,12 @@ export default function AddUser() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() =>
-                    setAddNewUserFormData(addNewUserFormInitialState)
-                  }
+                  onClick={handleDialogClose}
                 >
                   Cancel
                 </Button>
               </DialogClose>
+
               <Button type="submit" disabled={loading}>
                 {loading ? "Saving..." : "Save"}
               </Button>
